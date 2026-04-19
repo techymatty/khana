@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  RESTAURANT
+  ADMIN
+  RIDER
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  PREPARING
+  READY
+  PICKED_UP
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+  RAZORPAY
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id          String       @id @default(uuid())
+  phone       String       @unique
+  name        String?
+  role        Role         @default(USER)
+  fcmToken    String?
+  orders      Order[]
+  reviews     Review[]
+  restaurants Restaurant[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Restaurant {
+  id            String     @id @default(uuid())
+  name          String
+  description   String?
+  image         String?
+  halalVerified Boolean    @default(false)
+  latitude      Float
+  longitude     Float
+  address       String
+  phone         String
+  rating        Float      @default(0)
+  totalReviews  Int        @default(0)
+  isActive      Boolean    @default(true)
+  isApproved    Boolean    @default(false)
+  ownerId       String
+  owner         User       @relation(fields: [ownerId], references: [id])
+  menuItems     MenuItem[]
+  orders        Order[]
+  reviews       Review[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model MenuItem {
+  id           String      @id @default(uuid())
+  name         String
+  description  String?
+  price        Float
+  image        String?
+  isAvailable  Boolean     @default(true)
+  category     String?
+  restaurantId String
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  orderItems   OrderItem[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+  restaurantId    String
+  restaurant      Restaurant  @relation(fields: [restaurantId], references: [id])
+  riderId         String?
+  rider           Rider?      @relation(fields: [riderId], references: [id])
+  total           Float
+  status          OrderStatus @default(PENDING)
+  deliveryAddress String
+  deliveryLat     Float?
+  deliveryLng     Float?
+  items           OrderItem[]
+  payment         Payment?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model OrderItem {
+  id         String   @id @default(uuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+  quantity   Int
+  price      Float
+}
+
+model Payment {
+  id                String        @id @default(uuid())
+  orderId           String        @unique
+  order             Order         @relation(fields: [orderId], references: [id])
+  amount            Float
+  method            PaymentMethod
+  status            PaymentStatus @default(PENDING)
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  razorpaySignature String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model Rider {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String   @unique
+  isActive  Boolean  @default(true)
+  latitude  Float?
+  longitude Float?
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Review {
+  id           String     @id @default(uuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  rating       Int
+  comment      String?
+  createdAt    DateTime   @default(now())
+}
+
+model OtpRecord {
+  id        String   @id @default(uuid())
+  phone     String
+  otp       String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
